@@ -1,14 +1,14 @@
 import tqdm
 import torch
 import numpy as np
-from transformers import CLIPTokenizerFast, CLIPProcessor, CLIPModel
+from transformers import CLIPTextConfig, CLIPTokenizerFast, CLIPProcessor, CLIPModel
 
 
 from tqdm.auto import tqdm
 
 
-def embed_batch(texts, images, batch_size = 16):
-    
+def embed_split(texts, images, batch_size = 16):
+
     image_arr = None
     text_arr = None
 
@@ -24,7 +24,7 @@ def embed_batch(texts, images, batch_size = 16):
 
         # Tokenize and embed the batch texts
         batch_txts = texts[i:i+batch_size]
-        inputs = tokenizer(batch_txts, return_tensors="pt").to(device)
+        inputs = tokenizer(batch_txts, padding=True, return_tensors="pt").to(device)
         batch_txt_emb = model.get_text_features(**inputs)
 
         # Process and embed the batch images
@@ -47,6 +47,7 @@ def embed_batch(texts, images, batch_size = 16):
             image_arr = np.concatenate((image_arr, batch_emb), axis=0)
             text_arr = np.concatenate((text_arr,batch_txt_emb), axis = 0)
 
+    return text_arr, image_arr
 
 
 
