@@ -15,7 +15,8 @@ def embed_split(texts, images, batch_size = 16):
     device = "cuda" if torch.cuda.is_available() else \
         ("mps" if torch.backends.mps.is_available() else "cpu")
     
-    model_id = "openai/clip-vit-base-patch32"
+    #model_id = "openai/clip-vit-base-patch32"
+    model_id = "openai/clip-vit-large-patch14"
     tokenizer = CLIPTokenizerFast.from_pretrained(model_id)
     processor = CLIPProcessor.from_pretrained(model_id)
     model = CLIPModel.from_pretrained(model_id).to(device)
@@ -24,8 +25,13 @@ def embed_split(texts, images, batch_size = 16):
 
         # Tokenize and embed the batch texts
         batch_txts = texts[i:i+batch_size]
-        inputs = tokenizer(batch_txts, padding=True, return_tensors="pt").to(device)
+        try: 
+            inputs = tokenizer(batch_txts, padding=True, return_tensors="pt").to(device)
+        except:
+            return batch_txts
         batch_txt_emb = model.get_text_features(**inputs)
+        batch_txt_emb = batch_txt_emb.squeeze(0)
+        batch_txt_emb = batch_txt_emb.cpu().detach().numpy()
 
         # Process and embed the batch images
         batch = images[i:i+batch_size]
