@@ -1,11 +1,13 @@
+import os
 import json
 from PIL import Image
 
+
 def load_dataset(dataset_directory):
-    raw_dataset = {"train": [], "dev": [], "test": []} 
-    texts = {"train": [], "dev": [], "test": []} 
-    imgs = {"train": [], "dev": [], "test": []} 
-    tweet_ids = {"train": [], "dev": [], "test": []} 
+    raw_dataset = {"train": [], "dev": [], "test": []}
+    texts = {"train": [], "dev": [], "test": []}
+    imgs = {"train": [], "dev": [], "test": []}
+    tweet_ids = {"train": [], "dev": [], "test": []}
 
     train_set = []
     for split in ["train", "dev", "test"]:

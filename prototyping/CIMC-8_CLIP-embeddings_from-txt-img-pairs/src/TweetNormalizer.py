@@ -59,15 +59,16 @@ if __name__ == "__main__":
             "SC has first two presumptive cases of coronavirus, DHEC confirms https://postandcourier.com/health/covid19/sc-has-first-two-presumptive-cases-of-coronavirus-dhec-confirms/article_bddfe4ae-5fd3-11ea-9ce4-5f495366cee6.html?utm_medium=social&utm_source=twitter&utm_campaign=user-share… via @postandcourier"
         )
     )
-    
+
+
 def furtherNormalizeTweet(tweet, clip_tokenizer):
 
     tweet_no_emoji = re.sub("(^|\s):\S.*?\S:", "", tweet)
     tokens_no_emoji = clip_tokenizer(tweet_no_emoji, padding=True, return_tensors="pt")["input_ids"][0]
-    seq_length = (tokens_no_emoji == 49407).nonzero(as_tuple=True)[0][0] + 1#length of sequence inclunding <EOS>
+    seq_length = (tokens_no_emoji == 49407).nonzero(as_tuple=True)[0][0] + 1  # length of sequence inclunding <EOS>
 
-    if seq_length >  77:
-    # Remove multiple occurunces of @USER and HTTPURL
+    if seq_length > 77:
+        # Remove multiple occurunces of @USER and HTTPURL
         words = np.array(tweet_no_emoji.split())
         if "@USER" in words:
             words = words[~(words == "@USER")].astype(str).tolist()

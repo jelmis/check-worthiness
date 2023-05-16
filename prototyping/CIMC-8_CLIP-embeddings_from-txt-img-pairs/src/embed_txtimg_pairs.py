@@ -7,15 +7,15 @@ from transformers import CLIPTextConfig, CLIPTokenizerFast, CLIPProcessor, CLIPM
 from tqdm.auto import tqdm
 
 
-def embed_split(texts, images, batch_size = 16):
+def embed_split(texts, images, batch_size=16):
 
     image_arr = None
     text_arr = None
 
     device = "cuda" if torch.cuda.is_available() else \
         ("mps" if torch.backends.mps.is_available() else "cpu")
-    
-    #model_id = "openai/clip-vit-base-patch32"
+
+    # model_id = "openai/clip-vit-base-patch32"
     model_id = "openai/clip-vit-large-patch14"
     tokenizer = CLIPTokenizerFast.from_pretrained(model_id)
     processor = CLIPProcessor.from_pretrained(model_id)
@@ -25,7 +25,7 @@ def embed_split(texts, images, batch_size = 16):
 
         # Tokenize and embed the batch texts
         batch_txts = texts[i:i+batch_size]
-        try: 
+        try:
             inputs = tokenizer(batch_txts, padding=True, return_tensors="pt").to(device)
         except:
             return batch_txts
@@ -51,9 +51,6 @@ def embed_split(texts, images, batch_size = 16):
             text_arr = batch_txt_emb
         else:
             image_arr = np.concatenate((image_arr, batch_emb), axis=0)
-            text_arr = np.concatenate((text_arr,batch_txt_emb), axis = 0)
+            text_arr = np.concatenate((text_arr, batch_txt_emb), axis=0)
 
     return text_arr, image_arr
-
-
-
