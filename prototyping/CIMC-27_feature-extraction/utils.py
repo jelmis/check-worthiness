@@ -51,16 +51,17 @@ def table_feature_dims_per_split(split_to_features):
            f"Te\t\t{split_to_features[TEST].shape}"
 
 
-def pickle_features(features, pickle_file):
+def pickle_features_or_labels(features, pickle_file):
     """
     Takes the feature matrix of one split and pickles it.
-    :param features: NumPy array holding all input features
-    :param pickle_file: Pickle file
+    :param features: np.array holding all input features/labels
+    :param pickle_file: Path to pickle file
     :return:
     """
     with open(pickle_file, 'wb') as handle:
         os.makedirs(os.path.dirname(pickle_file), exist_ok=True)
         pickle.dump(features, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"Pickled: {pickle_file}")
 
 
 def pickle_all_splits(split_to_features, directory, feature_method, dataset_version, reload_and_check=False):
@@ -80,8 +81,7 @@ def pickle_all_splits(split_to_features, directory, feature_method, dataset_vers
         # Pickle current split's features
         pickle_file = f"{directory}/features/{feature_method}/{feature_method}_{split}_{dataset_version}.pickle"
         os.makedirs(os.path.dirname(pickle_file), exist_ok=True)
-        pickle_features(features, pickle_file)
-        print(f"Pickled: {pickle_file}")
+        pickle_features_or_labels(features, pickle_file)
 
         # Check if pickled and initial feature matrix are the same
         if reload_and_check:
