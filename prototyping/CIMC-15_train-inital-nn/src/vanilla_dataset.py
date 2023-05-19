@@ -3,7 +3,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 
 
-class CustomDataset(Dataset):
+class VanillaDataset(Dataset):
     def __init__(self, features, labels):
         self.features = torch.from_numpy(features.astype(np.float32))
         self.labels = torch.from_numpy(labels.astype(np.float32))
