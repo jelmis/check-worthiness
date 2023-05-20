@@ -46,7 +46,7 @@ def plot_losses(num_epochs, losses, fe_method):
 
     fig, ax = plt.subplots(figsize=(8, 5))
     plt.plot(step, np.array(losses))
-    plt.title(f"Step-wise Loss {fe_method}")
+    plt.title(f"Step-wise Loss ({fe_method})")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.show()
