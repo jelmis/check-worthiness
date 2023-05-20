@@ -30,10 +30,10 @@ def table_embeddings_dims_per_split(embeddings_dict):
     :param embeddings_dict: e.g. embeddings[TRAIN][IMG]
     :return:
     """
-    table = f"Split\ttxt\t\t\timg\n" \
-            f"Tr\t\t{embeddings_dict[TRAIN][TXT].shape}\t{embeddings_dict[TRAIN][IMG].shape}\n" \
-            f"De\t\t{embeddings_dict[DEV][TXT].shape}\t{embeddings_dict[DEV][IMG].shape}\n" \
-            f"Te\t\t{embeddings_dict[TEST][TXT].shape}\t{embeddings_dict[TEST][TXT].shape}" \
+    table = f"Split\ttxt\t\timg\n" \
+            f"Tr\t{embeddings_dict[TRAIN][TXT].shape}\t{embeddings_dict[TRAIN][IMG].shape}\n" \
+            f"De\t{embeddings_dict[DEV][TXT].shape}\t{embeddings_dict[DEV][IMG].shape}\n" \
+            f"Te\t{embeddings_dict[TEST][TXT].shape}\t{embeddings_dict[TEST][TXT].shape}" \
 
     return table
 
@@ -46,9 +46,9 @@ def table_feature_dims_per_split(split_to_features):
     :return: UTF-8 table that shows the input dimensions per split
     """
     return f"Split\tShape\n" \
-           f"Tr\t\t{split_to_features[TRAIN].shape}\n" \
-           f"De\t\t{split_to_features[DEV].shape}\n" \
-           f"Te\t\t{split_to_features[TEST].shape}"
+           f"Tr\t{split_to_features[TRAIN].shape}\n" \
+           f"De\t{split_to_features[DEV].shape}\n" \
+           f"Te\t{split_to_features[TEST].shape}"
 
 
 def pickle_features_or_labels(features, pickle_file):
