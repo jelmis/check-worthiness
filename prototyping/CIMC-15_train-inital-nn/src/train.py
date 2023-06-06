@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+from tqdm import tqdm
 
 
-def training_loop(train_dataloader, val_dataloader, optimizer, network, loss_fn, num_epochs):
+def training_loop(device, train_dataloader, val_dataloader, optimizer, network, loss_fn, num_epochs):
     """
     Conducts the training loop and returns a list of all best losses.
     :param train_dataloader:
@@ -17,13 +18,14 @@ def training_loop(train_dataloader, val_dataloader, optimizer, network, loss_fn,
     tot_train_losses = []
     tot_val_losses = []
 
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs)):
         train_losses = []
         for features, labels in train_dataloader:
             # Zero the parameter gradients
             optimizer.zero_grad()
 
             # Forward pass
+            features, labels = features.to(device), labels.to(device)
             out = network(features)
 
             # Compute loss
@@ -39,6 +41,7 @@ def training_loop(train_dataloader, val_dataloader, optimizer, network, loss_fn,
         val_losses = []
         with torch.no_grad():
             for val_features, val_labels in val_dataloader:
+                val_features, val_labels = val_features.to(device), val_labels.to(device)
                 val_out = network(val_features)
                 val_loss = loss_fn(val_out, val_labels.unsqueeze(-1))
                 val_losses.append(val_loss.item())
