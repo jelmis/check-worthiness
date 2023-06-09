@@ -7,6 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from itertools import product
 import random
 from torch.utils.data import DataLoader
+from datetime import date, datetime
 
 
 class Trainer():
@@ -15,14 +16,16 @@ class Trainer():
     It can perform hyperparameter search, and deep training on provided hyperparameters.
     """
 
-    def __init__(self, model, model_init_params, dataset_dict):
+    def __init__(self, model, dataset_method, dataset_dict):
         """
         :param dataset_dict:  
         """
         self.model = model
-        self.model_init_params = model_init_params
+        self.dataset_method = dataset_method
         self.dataset_dict = dataset_dict
-        self.trained_models = []
+        self.input_dim = len(dataset_dict["train"][0][0])
+        self.output_dim = 1
+        self.trained_models = {}
 
     def hyperparameter_search(self, **kwargs):
         """
@@ -32,32 +35,35 @@ class Trainer():
         combinations.
         """
 
-        loss_fn = kwargs.get("loss_fn", nn.BCELoss())
-        optimizer_type = kwargs.get("optimizer", torch.optim.Adam)
-        num_workers = kwargs.get("num_workers", 8)
-        num_epochs = kwargs.get("num_epochs", 50)
-        device = kwargs.get("device", "cpu")
-        early_quit_thresh = kwargs.get("early_quit_thresh", 10)
-        balance_classes = kwargs.get("balance_classes", False)
-        hyparam_combinations = self._get_hyparam_combinations(kwargs)
+        self.loss_fn = kwargs.get("loss_fn", nn.BCELoss())
+        self.optimizer_type = kwargs.get("optimizer", torch.optim.Adam)
+        self.num_workers = kwargs.get("num_workers", 0)
+        self.num_epochs = kwargs.get("num_epochs", 50)
+        self.device = kwargs.get("device", "cpu")
+        self.early_quit_thresh = kwargs.get("early_quit_thresh", 10)
+        self.balance_classes = kwargs.get("balance_classes", False)
+        self.model_init_params = [self.input_dim] + kwargs.get("model_init_params", [64, 32]) + [self.output_dim]
+        self.hyparam_combinations = self._get_hyparam_combinations(kwargs)
+
+        # TODO: Add scheduler for learning rate decay
 
         # Perform hyperparameter search
         # TODO: Allow hyperparameter search on model architecture
-        for lr, batch_size, shuffle in hyparam_combinations:
+        for lr, batch_size, shuffle in self.hyparam_combinations:
+            self.lr, self.batch_size, self.shuffle = lr, batch_size, shuffle
             dataloaders = {}
-            if not balance_classes:
+            if not self.balance_classes:
                 for split_name, split in self.dataset_dict.items():
-                    dataloaders[split_name] = DataLoader(split, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+                    dataloaders[split_name] = DataLoader(split, batch_size=batch_size, shuffle=shuffle, num_workers=self.num_workers)
             else:
                 pass  # TODO: Add balanced dataloader support
             model = self.model(self.model_init_params)
-            model.to(device)
-            tb = SummaryWriter()
-            optimizer = optimizer_type(model.parameters(), lr=lr)
-            self.train_model(tb, num_epochs, model, device, dataloaders["train"], dataloaders["val"], optimizer, loss_fn, early_quit_thresh)
-            self.trained_models.append(model)
-            # self._evaluate_model(model)  # log
-            # self._name_the_model()
+            model.to(self.device)
+            model_metadata, model_metadata_w_time = self._get_model_metadata(lr, batch_size, shuffle)
+            tb = SummaryWriter(comment=model_metadata)
+            optimizer = self.optimizer_type(model.parameters(), lr=lr)
+            self.train_model(tb, self.num_epochs, model, self.device, dataloaders["train"], dataloaders["dev"], optimizer, self.loss_fn, early_quit_thresh=self.early_quit_thresh)
+            self.trained_models[model_metadata_w_time] = model
         return
 
     def _get_hyparam_combinations(self, hyperparams):
@@ -66,14 +72,23 @@ class Trainer():
         learning_rates = hyperparams.get("learning_rates", [1e-5])
         batch_size_list = hyperparams.get("batch_sizes", [16])
         shuffle_list = hyperparams.get("shuffle_list", [True])
-        hyperparams_to_search = product(learning_rates, batch_size_list, shuffle_list)
+        hyperparam_combinations = product(learning_rates, batch_size_list, shuffle_list)
         if random is None:
             # Perform grid search
-            return hyperparams_to_search
+            return hyperparam_combinations
         else:
             # TODO: allow random search
             # random.sample(list, n)
-            return hyperparams_to_search
+            return hyperparam_combinations
+
+    def _get_model_metadata(self, lr, batch_size, shuffle):
+
+        time = datetime.now().strftime("%d-%m-%Y_%H-%M")
+        model_architecture = "x".join(str(size) for size in self.model_init_params[1:-1])
+        shuffle = "shuffled" if shuffle else "unshuffled"
+        model_metadata = "_".join([self.dataset_method, model_architecture, "lr_"+str(lr), "batch-size_"+str(batch_size), shuffle])
+        model_metadata_w_time = time + "_" + model_metadata
+        return model_metadata, model_metadata_w_time
 
     def train_model(self, tb, num_epochs, model, device, train_dataloader, val_dataloader, optimizer, loss_fn, early_quit_thresh=None):
         """
@@ -91,21 +106,36 @@ class Trainer():
             # Log to tensorboard
             tb.add_scalar("Mean Loss/train", epoch_train_loss, epoch)
             tb.add_scalar("Mean Loss/val", epoch_val_loss, epoch)
-            precision, recall = self._evaluate_model(model, val_dataloader)
-            tb.add_scalar("Precision for Positive Class on valset:", precision)
-            tb.add_sacalar("Recall Positive Class on valset:", recall)
+            precision, recall, f1 = self._evaluate_model(model, val_dataloader)
+            tb.add_scalar("Scores on Valset Positive Samples/precision", precision, epoch)
+            tb.add_scalar("Scores on Valset Positive Samples/recall", recall, epoch)
+            tb.add_scalar("Scores on Valset Positive Samples/f1", f1, epoch)
 
             if early_quit_thresh:
-                if early_quit_thresh > epoch+1:
+                if early_quit_thresh < epoch+1:
                     idx = early_quit_thresh+1
                     last_epoch_val_loss = accum_val_losses[-1]
                     recent_mean_loss = np.mean(accum_val_losses[-idx:-1])
                     if recent_mean_loss < last_epoch_val_loss:
-                        tb.close()
+                        print("Early quitting at epoch:", epoch)
                         break
+
+        lr = self._get_lr(optimizer)
+        tb.add_hparams(
+            {
+                "model_architecture": "x".join(str(size) for size in self.model_init_params[1:-1]),
+                "dataset_method": self.dataset_method,
+                "lr": lr, "bsize": self.batch_size, "shuffle": self.shuffle
+            },
+            {
+                "f1_score": f1,
+                "loss": epoch_val_loss,
+            },
+        )
+        tb.close()
         return
 
-    def _train_single_epoch(model, device, train_dataloader, val_dataloader, optimizer, loss_fn):
+    def _train_single_epoch(self, model, device, train_dataloader, val_dataloader, optimizer, loss_fn):
         """
         Conducts the training loop and returns a list of all best losses.
         :param train_dataloader:
@@ -140,15 +170,16 @@ class Trainer():
 
         return avg_train_loss, avg_val_loss
 
-    def _evaluate_model(model, dataloader, confidence=0.5):
+    def _evaluate_model(self, model, dataloader, confidence=0.5):
 
         pred = []
         gt = []
 
         with torch.no_grad():
             for x, y in dataloader:
-                scores = model(x)
-                y_pred = np.where(scores < confidence, 0, 1).tolist()
+                x, y = x.to(self.device), y.to(self.device)
+                scores = model(x).cpu()
+                y_pred = np.where(scores < confidence, 0, 1).reshape(-1).tolist()
                 pred.extend(y_pred)
                 gt.extend(y.tolist())
         pred = np.array(pred)
@@ -156,5 +187,15 @@ class Trainer():
         TP = sum(gt[np.where(pred == 1)])
         FP = sum(pred[np.where(gt == 0)])
         FN = -sum(pred[np.where(gt == 1)] - 1)
+        precision = TP/(TP+FP) if (TP+FP) != 0 else 0
+        recall = TP/(TP+FN) if (TP+FN) != 0 else 0
+        f1 = 2*(precision*recall)/(precision+recall) if (precision+recall) != 0 else 0
+        return precision, recall, f1
 
-        return TP/(TP+FP), TP/(TP+FN)
+    def _get_lr(self, optimizer):
+        """
+        If lr decay is used, the lr will differ at the end of training.
+        Get the lr here.
+        """
+        for param_group in optimizer.param_groups:
+            return param_group['lr']
