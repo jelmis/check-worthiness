@@ -62,8 +62,8 @@ class Trainer():
             model_metadata, model_metadata_w_time = self._get_model_metadata(lr, batch_size, shuffle)
             tb = SummaryWriter(comment=model_metadata)
             optimizer = self.optimizer_type(model.parameters(), lr=lr)
-            self.train_model(tb, self.num_epochs, model, self.device, dataloaders["train"], dataloaders["dev"], optimizer, self.loss_fn, early_quit_thresh=self.early_quit_thresh)
-            self.trained_models[model_metadata_w_time] = model
+            f1 = self.train_model(tb, self.num_epochs, model, self.device, dataloaders["train"], dataloaders["dev"], optimizer, self.loss_fn, early_quit_thresh=self.early_quit_thresh)
+            self.trained_models[model_metadata_w_time] = model, f1
         return
 
     def _get_hyparam_combinations(self, hyperparams):
@@ -133,7 +133,7 @@ class Trainer():
             },
         )
         tb.close()
-        return
+        return f1
 
     def _train_single_epoch(self, model, device, train_dataloader, val_dataloader, optimizer, loss_fn):
         """
@@ -199,3 +199,26 @@ class Trainer():
         """
         for param_group in optimizer.param_groups:
             return param_group['lr']
+
+    def save_trained_models(self, dir, to_be_saved_models=None):
+        """
+        Saves trained models in a directory.
+        By default, all models trained by the trainer are saved.
+        :param to_be_saved_models: List of model names in the form model_metadata_w_time
+        :param dir: Directory where the models are saved
+        :return:
+        """
+        # Save all models
+        if to_be_saved_models == None:
+            for model_name in self.trained_models.keys():
+                model, f1 = self.trained_models[model_name]
+                path = f"{dir}/{model_name}_f1_{f1:.2f}.pt"
+                torch.save(model.state_dict(), path)
+
+        # Save specified models
+        else:
+            for model_name in to_be_saved_models:
+                model, f1 = self.trained_models[model_name]
+                path = f"{dir}/{model_name}_f1_{f1:.2f}.pt"
+                torch.save(model.state_dict(), path)
+
