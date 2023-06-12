@@ -13,6 +13,9 @@ def custom_dataloader(dataset, split, batch_size):
 
     class_weights = 1.0 / class_counts.float()
 
+    # class_counts += torch.tensor([-150, 150])
+    # print(class_counts)
+
     sample_weights = class_weights[labels]
 
     sampler = WeightedRandomSampler(sample_weights, len(dataset), replacement=True)
