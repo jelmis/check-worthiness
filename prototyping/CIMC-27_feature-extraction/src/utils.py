@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 import os
-from feature_extraction import TRAIN, DEV, TEST, TXT, IMG
+from feature_extraction import TRAIN, DEV, TEST, GOLD, TXT, IMG
 
 
 def get_embeddings_from_pickle_file(path_to_split):
@@ -33,7 +33,8 @@ def table_embeddings_dims_per_split(embeddings_dict):
     table = f"Split\ttxt\t\timg\n" \
             f"Tr\t{embeddings_dict[TRAIN][TXT].shape}\t{embeddings_dict[TRAIN][IMG].shape}\n" \
             f"De\t{embeddings_dict[DEV][TXT].shape}\t{embeddings_dict[DEV][IMG].shape}\n" \
-            f"Te\t{embeddings_dict[TEST][TXT].shape}\t{embeddings_dict[TEST][TXT].shape}" \
+            f"Te\t{embeddings_dict[TEST][TXT].shape}\t{embeddings_dict[TEST][TXT].shape}\n" \
+            f"Go\t{embeddings_dict[GOLD][TXT].shape}\t{embeddings_dict[GOLD][TXT].shape}"
 
     return table
 
@@ -48,8 +49,8 @@ def table_feature_dims_per_split(split_to_features):
     return f"Split\tShape\n" \
            f"Tr\t{split_to_features[TRAIN].shape}\n" \
            f"De\t{split_to_features[DEV].shape}\n" \
-           f"Te\t{split_to_features[TEST].shape}"
-
+           f"Te\t{split_to_features[TEST].shape}\n" \
+           f"Go\t{split_to_features[GOLD].shape}"
 
 def pickle_features_or_labels(features, pickle_file):
     """
@@ -79,7 +80,10 @@ def pickle_all_splits(split_to_features, directory, feature_method, dataset_vers
     for split, features in split_to_features.items():
 
         # Pickle current split's features
-        pickle_file = f"{directory}/features/{feature_method}/{feature_method}_{split}_{dataset_version}.pickle"
+        if split == GOLD:
+            pickle_file = f"{directory}/features/{feature_method}/{feature_method}_{split}.pickle"
+        else:
+            pickle_file = f"{directory}/features/{feature_method}/{feature_method}_{split}_{dataset_version}.pickle"
         os.makedirs(os.path.dirname(pickle_file), exist_ok=True)
         pickle_features_or_labels(features, pickle_file)
 

@@ -6,7 +6,8 @@ DEV = "dev"
 TEST = "test"
 TXT = "txt"
 IMG = "img"
-SPLITS = [TRAIN, DEV, TEST]
+GOLD = "gold"
+SPLITS = [TRAIN, DEV, TEST, GOLD]
 
 
 def cosine(txt_emb, img_emb):
@@ -71,7 +72,7 @@ def add_feature_dim_to_all_splits(split_to_features, split_to_new_dim):
     split_to_feats = split_to_features.copy()
 
     # Add cosine dim to every split
-    for split in [TRAIN, DEV, TEST]:
+    for split in SPLITS:
         feature_matrix = split_to_features[split]
         new_feature_array = split_to_new_dim[split]
         split_to_feats[split] = add_feature_dim(feature_matrix, new_feature_array)
