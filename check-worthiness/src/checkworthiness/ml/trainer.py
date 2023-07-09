@@ -221,4 +221,3 @@ class Trainer():
                 model, f1 = self.trained_models[model_name]
                 path = f"{dir}/{model_name}_f1_{f1:.2f}.pt"
                 torch.save(model.state_dict(), path)
-
