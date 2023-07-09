@@ -1,4 +1,3 @@
-from feature_extraction import TRAIN, DEV, TEST, GOLD, TXT, IMG
 import pickle
 import numpy as np
 import os
@@ -8,6 +7,15 @@ from PIL import Image
 ##############################
 # STUFF FOR DATASET CREATIONS FROM RAW DATA
 ##############################
+
+# Constant dict keys
+TRAIN = "train"
+DEV = "dev"
+TEST = "test"
+TXT = "txt"
+IMG = "img"
+GOLD = "gold"
+SPLITS = [TRAIN, DEV, TEST, GOLD]
 
 
 def load_dataset(dataset_directory):
