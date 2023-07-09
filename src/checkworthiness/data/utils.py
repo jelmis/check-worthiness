@@ -1,6 +1,9 @@
 import pickle
+import re
 import numpy as np
+import pandas as pd
 import os
+import torch
 import json
 from PIL import Image
 
@@ -52,6 +55,8 @@ def load_data_splits_with_gold_dataset(dataset_directory, version):
     texts = {"train": [], "dev": [], "test": [], "gold": []}
     imgs = {"train": [], "dev": [], "test": [], "gold": []}
     tweet_ids = {"train": [], "dev": [], "test": [], "gold": []}
+    ocr_texts = {"train": [], "dev": [], "test": [], "gold": []}
+    tweet_concat_ocr = {"train": [], "dev": [], "test": [], "gold": []}
 
     for split in ["train", "dev", "test", "gold"]:
         if split == "gold":
@@ -65,6 +70,8 @@ def load_data_splits_with_gold_dataset(dataset_directory, version):
                     imgs[split].append(Image.open(img_path))
                     texts[split].append(line["tweet_text"])
                     tweet_ids[split].append(line["tweet_id"])
+                    ocr_texts[split].append(line["ocr_text"])
+                    tweet_concat_ocr[split].append(str(line["tweet_text"] + "\n" + line["ocr_text"]))
         else:
             data_dir = f"{dataset_directory}_{version}"
             split_name = split if split != "test" else "dev_test"
@@ -77,14 +84,82 @@ def load_data_splits_with_gold_dataset(dataset_directory, version):
                     imgs[split].append(Image.open(img_path))
                     texts[split].append(line["tweet_text"])
                     tweet_ids[split].append(line["tweet_id"])
+                    ocr_texts[split].append(line["ocr_text"])
+                    tweet_concat_ocr[split].append(str(line["tweet_text"] + "\n" + line["ocr_text"]))
 
-    print("Sizes of train/test/dev/gold txt and img arrays respectively: ")
-    print(len(texts["train"]), len(imgs["train"]))
-    print(len(texts["dev"]), len(imgs["dev"]))
-    print(len(texts["test"]), len(imgs["test"]))
-    print(len(texts["gold"]), len(imgs["gold"]))
+    print("Sizes of txt, img, ocr, txt+ocr arrays in train, test, dev, gold:")
+    print(len(texts["train"]), len(imgs["train"]), len(ocr_texts["train"]), len(tweet_concat_ocr["train"]))
+    print(len(texts["dev"]), len(imgs["dev"]), len(ocr_texts["train"]), len(tweet_concat_ocr["train"]))
+    print(len(texts["test"]), len(imgs["test"]), len(ocr_texts["train"]), len(tweet_concat_ocr["train"]))
+    print(len(texts["gold"]), len(imgs["gold"]), len(ocr_texts["train"]), len(tweet_concat_ocr["train"]))
 
-    return raw_dataset, texts, imgs, tweet_ids
+    return raw_dataset, texts, imgs, tweet_ids, ocr_texts, tweet_concat_ocr
+
+
+##############################
+# EMBEDDING UTILS
+##############################
+
+def get_samples_with_excess_tokens(token_limit, split_to_tokenized_texts, padding_token):
+    # Save examples with excess tokens here
+    split_to_examples_with_excess_tokens = {split: [] for split in SPLITS}
+    
+    # Find examples with excess tokens
+    for split in SPLITS:
+        for idx, item in enumerate(split_to_tokenized_texts[split]):
+            seq_length = (item != padding_token).nonzero(as_tuple=True)[0].shape[0]
+            if seq_length > token_limit:
+                split_to_examples_with_excess_tokens[split].append((idx, seq_length, seq_length - token_limit)) #record how many tokens would be truncated from which sample
+        split_to_examples_with_excess_tokens[split].sort(key=lambda x: x[1])
+
+    # Return dictionary that contains excess examples with excess tokens for every split
+    return split_to_examples_with_excess_tokens
+
+
+def further_normalize_samples_with_excess_tokens(token_limit, split_to_normalized_texts, split_to_samples_with_excess_tokens, split_to_tokenized, tokenizer, padding_token):
+    # Copy old texts
+    final_split_to_normalized_texts = split_to_normalized_texts.copy()
+    
+    # Remove emoji explanations and HTTPURL/@USER tokens from tweets with excess tokens
+    for split, excess_examples in split_to_samples_with_excess_tokens.items():
+        for excess_example in excess_examples:
+            
+            # Original (normalized) text
+            idx, length, num_excess = excess_example
+            text = split_to_normalized_texts[split][idx]
+
+            # Remove emojis and tokeníze
+            further_norm_text = re.sub("(^|\s):\S.*?\S:", "", text)
+            further_norm_tokens = tokenizer(further_norm_text, padding=True, return_tensors="pt")["input_ids"][0]
+            
+            # New sequence length
+            seq_length = (further_norm_tokens != padding_token).nonzero(as_tuple=True)[0].shape[0]
+            
+            # Remove multiple occurences of @USER and HTTPURL
+            if seq_length > token_limit:
+                # @USER
+                words = np.array(further_norm_text.split())
+                if "@USER" in words:
+                    words = words[~(words == "@USER")].astype(str).tolist()
+                    further_norm_text = " ".join(words + ["@USER"])
+                # @HTTP
+                words = np.array(further_norm_text.split())
+                if "HTTPURL" in words:
+                    words = words[~(words == "HTTPURL")].tolist()
+                further_norm_text = " ".join(words + ["HTTPURL"])
+                # Tokenize
+                further_norm_tokens = tokenizer(further_norm_text, padding=True, return_tensors="pt")["input_ids"][0]
+
+            # Final text the tokenizer receives
+            seq_length = (further_norm_tokens != padding_token).nonzero(as_tuple=True)[0].shape[0]
+            if seq_length > token_limit:
+                num_excess_tokens = seq_length - token_limit
+                final_split_to_normalized_texts[split][idx] = " ".join(further_norm_text.split()[:-num_excess_tokens])
+            else: 
+                final_split_to_normalized_texts[split][idx] = further_norm_text
+    
+    # Return final tokens
+    return final_split_to_normalized_texts
 
 
 ##############################
