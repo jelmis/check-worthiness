@@ -162,6 +162,41 @@ def further_normalize_samples_with_excess_tokens(token_limit, split_to_normalize
     return final_split_to_normalized_texts
 
 
+def embed_and_pickle_split(model, model_name, pickle_dir, split_name, split_text, with_ocr=False, batch_size=8, dataset_version="v2"):
+    # Gather information about the split
+    ocr_method_string = f"{model_name}_with_ocr_{split_name}_{dataset_version}" if with_ocr else f"{model_name}_{split_name}_{dataset_version}"
+    pickle_file = f"{pickle_dir}/{ocr_method_string}.pickle" 
+    num_samples = len(split_text)
+    total_num_steps = int(num_samples / batch_size)
+    
+    # Show overview info
+    print(f"\nSplit: {split_name}")
+    print(f"Num samples: {num_samples}")
+    print(f"Num batches: {total_num_steps}")
+
+    # Collect batch-wise embeddings here
+    embedding_tensors_per_batch = []
+
+    # Push raw text through the model
+    for idx in range(0, num_samples, batch_size):
+        print(f"{split_name} batch {int((idx+1) / batch_size)}/{total_num_steps}")
+        batch = split_text[idx:min(num_samples, idx + batch_size)]
+        embedded_batch = model.encode(batch)
+        embedding_tensors_per_batch.append(embedded_batch)
+
+    # Make one big array out of all batches
+    all_embeddings = np.concatenate(embedding_tensors_per_batch, axis=0)
+    print(f"{ocr_method_string}: {all_embeddings.shape}")
+
+    # Pickle the embeddings array
+    with open(pickle_file, 'wb') as handle:
+        pickle.dump(all_embeddings, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"Pickled the embeddings: {pickle_file}")
+
+    # Return all embeddings
+    return all_embeddings
+
+
 def embed_and_pickle_split_with_bertweet(bertweet_model, pickle_dir, split_name, encoded_split, with_ocr=False, batch_size=8, dataset_version="v2", device="cpu"):
     # Gather information about the split
     ocr_method_string = f"bertweet_embeddings_with_ocr_{split_name}_{dataset_version}" if with_ocr else f"bertweet_embeddings_{split_name}_{dataset_version}"
@@ -196,13 +231,6 @@ def embed_and_pickle_split_with_bertweet(bertweet_model, pickle_dir, split_name,
 
     # Convert to Numpy array
     all_embeddings = all_embeddings_tensor.numpy()
-
-    # Pickle the tensor with all embeddings
-    with open(pickle_file, 'wb') as handle:
-        pickle.dump(all_embeddings, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        print(f"Pickled the embeddings: {pickle_file}")
-
-    # Return the Numpy array with all embeddings
     return all_embeddings
 
 
