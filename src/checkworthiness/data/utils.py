@@ -162,9 +162,9 @@ def further_normalize_samples_with_excess_tokens(token_limit, split_to_normalize
     return final_split_to_normalized_texts
 
 
-def embed_and_pickle_split_with_bertweet(bertweet_model, pickle_dir, split_name, encoded_split, with_ocr=False, batch_size=8, device="cpu"):
+def embed_and_pickle_split_with_bertweet(bertweet_model, pickle_dir, split_name, encoded_split, with_ocr=False, batch_size=8, dataset_version="v2", device="cpu"):
     # Gather information about the split
-    ocr_method_string = f"BERTweet_embeddings_with_ocr_{split_name}" if with_ocr else f"BERTweet_embeddings_{split_name}"
+    ocr_method_string = f"bertweet_embeddings_with_ocr_{split_name}_{dataset_version}" if with_ocr else f"bertweet_embeddings_{split_name}_{dataset_version}"
     pickle_file = f"{pickle_dir}/{ocr_method_string}.pickle" 
     num_samples = encoded_split.shape[0]
     total_num_steps = int(num_samples / batch_size)
@@ -193,14 +193,17 @@ def embed_and_pickle_split_with_bertweet(bertweet_model, pickle_dir, split_name,
     # Make one big tensor out of all batches
     all_embeddings_tensor = torch.cat(embedding_tensors_per_batch, dim=0)
     print(f"\n{ocr_method_string}: {all_embeddings_tensor.shape}")
-    
+
+    # Convert to Numpy array
+    all_embeddings = all_embeddings_tensor.numpy()
+
     # Pickle the tensor with all embeddings
     with open(pickle_file, 'wb') as handle:
-        pickle.dump(all_embeddings_tensor, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(all_embeddings, handle, protocol=pickle.HIGHEST_PROTOCOL)
         print(f"Pickled the embeddings: {pickle_file}")
 
-    # Return the tensor with all embeddings
-    return all_embeddings_tensor
+    # Return the Numpy array with all embeddings
+    return all_embeddings
 
 
 ##############################
