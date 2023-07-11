@@ -1,4 +1,3 @@
-from feature_extraction import TRAIN, DEV, TEST, GOLD, TXT, IMG
 import pickle
 import numpy as np
 import os
@@ -39,36 +38,34 @@ def load_dataset(dataset_directory):
     return raw_dataset, texts, imgs, tweet_ids
 
 
-def load_data_splits_with_gold_dataset(dataset_directory, version):
+def load_data_splits_with_gold_dataset(dataset_directory, version, **kwargs):
+    splits = kwargs.get("selected_split", None)
+    if splits is None:
+        splits = ["train", "dev", "test", "gold"]
+    if not isinstance(splits, list):
+        splits = [splits]
+
     raw_dataset = {"train": [], "dev": [], "test": [], "gold": []}
     texts = {"train": [], "dev": [], "test": [], "gold": []}
     imgs = {"train": [], "dev": [], "test": [], "gold": []}
     tweet_ids = {"train": [], "dev": [], "test": [], "gold": []}
 
-    for split in ["train", "dev", "test", "gold"]:
+    for split in splits:
         if split == "gold":
             data_dir = f"{dataset_directory}_test_gold"
             split_jsonl_file = f"{dataset_directory}_test_gold/CT23_1A_checkworthy_multimodal_english_test_gold.jsonl"
-            with open(split_jsonl_file, "r") as f:
-                for line in f:
-                    raw_dataset[split].append(json.loads(line))
-                    line = json.loads(line)
-                    img_path = os.path.join(data_dir, line["image_path"])
-                    imgs[split].append(Image.open(img_path))
-                    texts[split].append(line["tweet_text"])
-                    tweet_ids[split].append(line["tweet_id"])
         else:
             data_dir = f"{dataset_directory}_{version}"
             split_name = split if split != "test" else "dev_test"
             split_jsonl_file = f"{data_dir}/CT23_1A_checkworthy_multimodal_english_{split_name}.jsonl"
-            with open(split_jsonl_file, "r") as f:
-                for line in f:
-                    raw_dataset[split].append(json.loads(line))
-                    line = json.loads(line)
-                    img_path = os.path.join(data_dir, line["image_path"])
-                    imgs[split].append(Image.open(img_path))
-                    texts[split].append(line["tweet_text"])
-                    tweet_ids[split].append(line["tweet_id"])
+        with open(split_jsonl_file, "r") as f:
+            for idx, line in enumerate(f):
+                raw_dataset[split].append(json.loads(line))
+                line = json.loads(line)
+                img_path = os.path.join(data_dir, line["image_path"])
+                imgs[split].append(Image.open(img_path))
+                texts[split].append(line["tweet_text"])
+                tweet_ids[split].append(line["tweet_id"])
 
     print("Sizes of train/test/dev/gold txt and img arrays respectively: ")
     print(len(texts["train"]), len(imgs["train"]))
@@ -111,10 +108,10 @@ def table_embeddings_dims_per_split(embeddings_dict):
     :return:
     """
     table = f"Split\ttxt\t\timg\n" \
-            f"Tr\t{embeddings_dict[TRAIN][TXT].shape}\t{embeddings_dict[TRAIN][IMG].shape}\n" \
-            f"De\t{embeddings_dict[DEV][TXT].shape}\t{embeddings_dict[DEV][IMG].shape}\n" \
-            f"Te\t{embeddings_dict[TEST][TXT].shape}\t{embeddings_dict[TEST][TXT].shape}\n" \
-            f"Go\t{embeddings_dict[GOLD][TXT].shape}\t{embeddings_dict[GOLD][TXT].shape}"
+            f"Tr\t{embeddings_dict['train']['txt'].shape}\t{embeddings_dict['train']['img'].shape}\n" \
+            f"De\t{embeddings_dict['dev']['txt'].shape}\t{embeddings_dict['dev']['img'].shape}\n" \
+            f"Te\t{embeddings_dict['test']['txt'].shape}\t{embeddings_dict['test']['txt'].shape}\n" \
+            f"Go\t{embeddings_dict['gold']['txt'].shape}\t{embeddings_dict['gold']['txt'].shape}"
 
     return table
 
@@ -127,10 +124,10 @@ def table_feature_dims_per_split(split_to_features):
     :return: UTF-8 table that shows the input dimensions per split
     """
     return f"Split\tShape\n" \
-           f"Tr\t{split_to_features[TRAIN].shape}\n" \
-           f"De\t{split_to_features[DEV].shape}\n" \
-           f"Te\t{split_to_features[TEST].shape}\n" \
-           f"Go\t{split_to_features[GOLD].shape}"
+           f"Tr\t{split_to_features['train'].shape}\n" \
+           f"De\t{split_to_features['dev'].shape}\n" \
+           f"Te\t{split_to_features['test'].shape}\n" \
+           f"Go\t{split_to_features['gold'].shape}"
 
 
 def pickle_features_or_labels(features, pickle_file):
