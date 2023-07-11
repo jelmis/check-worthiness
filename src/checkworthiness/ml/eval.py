@@ -1,9 +1,9 @@
 import torch
+import csv
 import numpy as np
 import itertools
 from sklearn.metrics import classification_report
 from torch.utils.data import DataLoader, SubsetRandomSampler
-import torch
 
 
 def get_output_scores(model, dataloader):
@@ -122,3 +122,56 @@ def write_eval_to_file(file_path, report_string):
     with open(file_path, 'w') as f:
         f.write(report_string)
         return report_string
+
+def get_tweet_ids_and_pred_from_model(model, dataloader, confidence):
+    """
+    Runs a model on a given data set.
+    :param model: Trained model
+    :param dataloader: Dataloader of the evaluation set
+    :param confidence: Binary prediction threshold for the positive class
+    :return: zip(tweet_ids, predictions)
+    """
+    predictions = []
+    tweet_ids = []
+    with torch.no_grad():
+        for input_features, label, tweet_id in dataloader:
+            outputs = model(input_features)
+            predicted = np.where(outputs < confidence, 0, 1)
+            predicted = list(itertools.chain(*predicted))
+            predictions.append(predicted)
+            tweet_ids.append(tweet_id)
+
+    predictions = list(itertools.chain(*predictions))
+    predictions = ["Yes" if pred == 1 else "No" for pred in predictions]
+    tweet_ids = [int(id.item()) for id in list(itertools.chain(*tweet_ids))]
+
+    return zip(tweet_ids, predictions)
+
+
+def create_submission_file_from_model(model, dataloader, confidence, file_path, run_id="our_model"):
+    """
+    Writes the models prediction's to a .tsv submission file in the specified format:
+    1235648554338791427	No  our_model
+    1235287380292235264	Yes  our_model
+    1236020820947931136	No  our_model
+    30313	No  Model_1
+    :param model: Trained model
+    :param dataloader: Dataloader of the evaluation set
+    :param confidence: Binary prediction threshold for the positive class
+    :param confidence: Path to submission file
+    :param run_id: Our choice of how to name the model in the submission file
+    :return: 
+    """
+    # Get the ids with preds
+    list_of_id_pred_tuples = list(get_tweet_ids_and_pred_from_model(model, dataloader, confidence))
+
+    # Write to tsv file
+    with open(file_path, "wt") as out_file:
+        tsv_writer = csv.writer(out_file, delimiter='\t')
+        tsv_writer.writerow("")
+        for id, pred in list_of_id_pred_tuples:
+            id, pred = str(id), str(pred)
+            tsv_writer.writerow([id, pred, run_id])
+
+    # Status print
+    print(f"Created submission file at: {file_path}")
