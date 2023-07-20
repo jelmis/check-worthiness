@@ -14,6 +14,8 @@ st.set_page_config(layout="wide")
 #     unsafe_allow_html=True,
 # )
 
+st.session_state["admin_mode"] = False
+
 if not "clean_start" in st.session_state.keys():
     print("hey", os.getcwd())
     st.session_state["clean_start"] = True
@@ -25,6 +27,7 @@ if not "clean_start" in st.session_state.keys():
         "imgs_gold",
         "labels_gold",
         "texts_gold",
+        "confidence_gold",
     ]:
         with open(f"ui/pickles/{pickle_file}.pickle", "rb") as handle:
             st.session_state.data[pickle_file] = pickle.load(handle)
@@ -69,57 +72,72 @@ if but2.button("Next Tweet", use_container_width=True):
 
 col1.write("## Does this tweet require fact checking?")
 
-col1.button("Yes!", type="primary", use_container_width=True)
-col1.button("No!", use_container_width=True)
+if col1.button("Yes!", type="primary", use_container_width=True):
+    st.session_state["user_opinion"] = "Yes ✅"
+if col1.button("No!", use_container_width=True):
+    st.session_state["user_opinion"] = "No ❌"
 
-
-mod1, mod2, mod3 = col3.columns([0.30, 0.30, 0.40])
-mod1.write("##### Groundtruth")
-render_func = (
-    st.success
-    if st.session_state.data["labels_gold"][st.session_state["tweet_idx"]] == 1
-    else st.error
-)
-with mod1:
-    render_func(
-        "Yes"
+if st.session_state.get("user_opinion", None):
+    col3.write(
+        f"## Your opinion: {st.session_state.get('user_opinion', 'none')}"
+        if not st.session_state["admin_mode"]
+        else "## Admin mode on."
+    )
+    if not st.session_state["admin_mode"]:
+        st.session_state["user_opinion"] = None
+    mod1, mod2, mod3 = col3.columns([0.30, 0.30, 0.40])
+    mod1.write("##### Groundtruth")
+    render_func = (
+        st.success
         if st.session_state.data["labels_gold"][st.session_state["tweet_idx"]] == 1
-        else "No"
+        else st.error
+    )
+    with mod1:
+        render_func(
+            "Yes"
+            if st.session_state.data["labels_gold"][st.session_state["tweet_idx"]] == 1
+            else "No"
+        )
+
+    mod2.write("##### Discriminative Model")
+    render_func = (
+        st.success
+        if st.session_state.data["discr_preds_gold"][st.session_state["tweet_idx"]]
+        == "Yes"
+        else st.error
+    )
+    with mod2:
+        render_func(
+            st.session_state.data["discr_preds_gold"][st.session_state["tweet_idx"]]
+        )
+    mod2.write(
+        f"Model confidence: {int(st.session_state.data['confidence_gold'][st.session_state['tweet_idx']])}%"
     )
 
-
-mod2.write("##### Discriminative Model")
-render_func = (
-    st.success
-    if st.session_state.data["discr_preds_gold"][st.session_state["tweet_idx"]] == "Yes"
-    else st.error
-)
-with mod2:
-    render_func(
-        st.session_state.data["discr_preds_gold"][st.session_state["tweet_idx"]]
-    )
-
-mod3.write("##### ChatGPT")
-render_func = (
-    st.success
-    if st.session_state.data["gpt3-5_predictions_gold"][st.session_state["tweet_idx"]]
-    == 1
-    else st.error
-)
-with mod3:
-    render_func(
-        "Yes"
+    mod3.write("##### ChatGPT")
+    render_func = (
+        st.success
         if st.session_state.data["gpt3-5_predictions_gold"][
             st.session_state["tweet_idx"]
         ]
         == 1
-        else "No"
+        else st.error
     )
+    with mod3:
+        render_func(
+            "Yes"
+            if st.session_state.data["gpt3-5_predictions_gold"][
+                st.session_state["tweet_idx"]
+            ]
+            == 1
+            else "No"
+        )
 
-mod3.text_area(
-    "ChatGPT's Explanation",
-    value=st.session_state.data["explains_gold"][st.session_state["tweet_idx"]]
-    if len(st.session_state.data["explains_gold"][st.session_state["tweet_idx"]]) > 50
-    else "No explanations were received from ChatGPT for this one. :(",
-    height=500,
-)
+    mod3.text_area(
+        "ChatGPT's Explanation",
+        value=st.session_state.data["explains_gold"][st.session_state["tweet_idx"]]
+        if len(st.session_state.data["explains_gold"][st.session_state["tweet_idx"]])
+        > 50
+        else "No explanations were received from ChatGPT for this one. :(",
+        height=500,
+    )
