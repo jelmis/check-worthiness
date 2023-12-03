@@ -14,7 +14,7 @@ Link to imgs_gold.pickle (request access if necessary): https://drive.google.com
 
 
 ## Description
-Multimodal classification task on check-worthiness of tweet-image pairs collected from Twitter. The task is part of the "Check That! 2023" competition which in turn is part of CLEF 2023.
+Multimodal classification task on check-worthiness of tweet-image pairs collected from Twitter. The task is part of the "Check That! 2023" competition which in turn is part of CLEF 2023: https://checkthat.gitlab.io/clef2023/
 
 ## Visuals
 To-be-added.
@@ -31,5 +31,5 @@ Install the provided requirements.txt in a Python virtual environment preferably
 
 ## Authors and acknowledgment
 Onur Deniz Güler deniz.gueler@tum.de
-Jonas Engesser
-Patrizio Palmisano
+Jonas Engesser j.engesser@tum.de
+Patrizio Palmisano patrizio.palmisano@tum.de
