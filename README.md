@@ -29,7 +29,7 @@ Install the provided requirements.txt in a Python virtual environment preferably
 - Use pipeline notebooks to extract text and/or image embeddings from tweet-image pairs, train neural networks using our base datasets, dataloaders, models scripts, fit an SVM, or prompt ChatGPT to do classification. 
 - Use analysis notebooks to examine model output scores, feature distributions, PCA on features, etc. 
 
-## Authors and acknowledgment
+## Authors and Acknowledgment
 Onur Deniz Güler deniz.gueler@tum.de        
 Jonas Engesser j.engesser@tum.de            
 Patrizio Palmisano patrizio.palmisano@tum.de        
