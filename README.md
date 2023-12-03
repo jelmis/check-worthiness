@@ -30,6 +30,6 @@ Install the provided requirements.txt in a Python virtual environment preferably
 - Use analysis notebooks to examine model output scores, feature distributions, PCA on features, etc. 
 
 ## Authors and acknowledgment
-Onur Deniz Güler deniz.gueler@tum.de
-Jonas Engesser j.engesser@tum.de
-Patrizio Palmisano patrizio.palmisano@tum.de
+Onur Deniz Güler deniz.gueler@tum.de        
+Jonas Engesser j.engesser@tum.de            
+Patrizio Palmisano patrizio.palmisano@tum.de        
